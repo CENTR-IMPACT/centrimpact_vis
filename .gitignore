@@ -1,4 +1,74 @@
+# RStudio and R ignores
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+.Rapp.history
+.Rapp.history
+.Rhistory
+.RData
+.Ruserdata
+
+# macOS ignores
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# macOS folder attributes
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+
+# R package build output
+.Rbuildignore
+.Rcheck/
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+.Rapp.history
+
+# Compiled code and cache
+*.o
+*.so
+*.dll
+*.rds
+*.Rproj
+*.Rproj.user/
+*.Rhistory
+*.RData
+*.Ruserdata
+*.Rapp.history
+
+# Other typical ignores
+.Rhistory
+.RData
+.Ruserdata
+.Rapp.history
+.DS_Store
+.Rproj.user/
+.Rproj
+.Rhistory
+.RData
+.Ruserdata
+.Rapp.history
+.Rhistory
+.RData
+.Ruserdata
+.Rapp.history
+
+# VSCode
+.vscode/
+
+# Python virtualenv
+.venv/
+__pycache__/
+
+# Node
+node_modules/
