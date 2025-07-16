@@ -82,7 +82,7 @@ GeomRose <- ggproto("GeomRose", GeomBar,
     data <- data %>%
       group_by(fill) %>%
       mutate(y = max(y)) %>%
-      ungroup()
+      dplyr::ungroup()
 
     # Calculate bar positions and widths
     n <- nrow(data)
