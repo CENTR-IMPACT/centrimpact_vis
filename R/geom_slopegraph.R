@@ -9,7 +9,7 @@ GeomSlopegraph <- ggproto("GeomSlopegraph", ggplot2::Geom,
   default_aes = aes(
     colour = "grey30",
     size = 2,
-    alpha = NA,
+    alpha = 1,
     linewidth = 0.5,
     fill = NA
   ),
