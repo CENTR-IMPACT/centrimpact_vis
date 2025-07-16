@@ -30,6 +30,7 @@ calculate_default_size <- function(data) {
 #' @importFrom rlang .data
 #' @importFrom dplyr group_by summarize
 #' @importFrom stats na.omit
+#' @importFrom scales rescale
 #' @export
 #' @rdname geom_indicators
 #' @usage NULL
@@ -46,11 +47,19 @@ GeomIndicators <- ggplot2::ggproto("GeomIndicators", ggplot2::Geom,
     y = 0.5,
     size = 3
   ),
-  draw_panel = function(self, data, panel_params, coord, scale_method = "sqrt", scale_factor = NULL, show_reference_lines = TRUE, show_reference_circles = TRUE, na.rm = FALSE) {
+  draw_panel = function(self, data, panel_params, coord, scale_method = "sqrt", scale_factor = NULL, 
+                        show_reference_lines = TRUE, show_reference_circles = TRUE, na.rm = FALSE) {
     # Remove missing values
     data <- data[stats::complete.cases(data[, c("x", "r", "y")]), ]
     if (nrow(data) == 0) {
       return(grid::nullGrob())
+    }
+    
+    # Normalize r values to a reasonable range (1-10)
+    if (length(unique(data$r)) > 1) {  # Only normalize if there's variation
+      data$r_norm <- scales::rescale(data$r, to = c(1, 10))
+    } else {
+      data$r_norm <- data$r
     }
 
     # Calculate scale_factor if not provided
@@ -60,6 +69,10 @@ GeomIndicators <- ggplot2::ggproto("GeomIndicators", ggplot2::Geom,
 
     # Transform data
     coords <- coord$transform(data, panel_params)
+    
+    # Create a copy of coords with normalized r values
+    coords_norm <- coords
+    coords_norm$r <- coords_norm$r_norm
 
     grobs <- list()
 
@@ -75,26 +88,35 @@ GeomIndicators <- ggplot2::ggproto("GeomIndicators", ggplot2::Geom,
       }
     }
 
-    # Reference circles
+    # Reference circles - using normalized values
     if (show_reference_circles) {
-      ref_data <- stats::aggregate(r ~ x, data = data, max)
-      ref_data$y <- 0.5
-      ref_coords <- coord$transform(ref_data, panel_params)
-      if (nrow(ref_coords) > 0) {
-        grobs[[length(grobs) + 1]] <- grid::pointsGrob(
-          x = ref_coords$x,
-          y = ref_coords$y,
-          pch = 1,
-          size = unit(ref_coords$r / max(ref_coords$r, na.rm = TRUE) * scale_factor, "mm"),
-          gp = grid::gpar(col = "#E0E0E0", fill = NA, lwd = 0.5)
+      ref_data <- stats::aggregate(r_norm ~ x, data = coords, max)
+      ref_data$y <- mean(coords$y, na.rm = TRUE)  # Use mean y position
+      
+      if (nrow(ref_data) > 0) {
+        # Scale the radius for better visibility
+        max_r <- max(ref_data$r_norm, na.rm = TRUE)
+        ref_data$size <- ref_data$r_norm / max_r * scale_factor * 2
+        
+        grobs[[length(grobs) + 1]] <- grid::circleGrob(
+          x = ref_data$x,
+          y = ref_data$y,
+          r = unit(ref_data$size, "mm"),
+          gp = grid::gpar(
+            col = "#E0E0E0",
+            fill = NA,
+            lwd = 1,
+            alpha = 0.7
+          )
         )
       }
     }
 
-    # Main points
+    # Main points - using normalized values
     if (nrow(coords) > 0) {
-      # Scale sizes
-      r_scaled <- coords$r / max(coords$r, na.rm = TRUE) * scale_factor
+      # Use normalized values for scaling
+      max_r_norm <- max(coords$r_norm, na.rm = TRUE)
+      r_scaled <- coords$r_norm / max_r_norm * scale_factor
       # Ensure alpha is always numeric and not NA
       alpha_val <- coords$alpha
       if (all(is.na(alpha_val))) alpha_val <- 1
