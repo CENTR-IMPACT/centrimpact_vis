@@ -35,6 +35,8 @@ utils::globalVariables(c(
 #' @importFrom showtext showtext_auto
 #' @param dynamics_df Data frame of dynamics data.
 #' @param domain_df Data frame of domain data.
+#' @param color_df Color scheme data frame.
+#' @param font_df Font scheme data frame.
 #' @param colors Optional list of color definitions.
 #' @param project_title Character string specifying the project name for titles and contextual labeling.
 #' @param report_date Date object specifying when the report was generated. Defaults to current system date.

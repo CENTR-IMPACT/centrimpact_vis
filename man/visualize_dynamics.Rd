@@ -25,6 +25,10 @@ visualize_dynamics(
 \item{colors}{Optional list of color definitions.}
 
 \item{font}{Optional font specification for text rendering.}
+
+\item{color_df}{Color scheme data frame.}
+
+\item{font_df}{Font scheme data frame.}
 }
 \value{
 A ggplot2 object containing the dynamics visualization.
