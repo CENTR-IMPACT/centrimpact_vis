@@ -28,7 +28,6 @@ visualize_alignment <- function(
   # ============================================================================
   # PARAMETER VALIDATION AND SETUP
   # ============================================================================
-alignment_df <- alignment_medians
   # Ensure we have a color scheme - use default if none provided
   # This prevents errors downstream when referencing color elements
   if(is.null(color_df)) {
@@ -38,31 +37,72 @@ alignment_df <- alignment_medians
   # ===========================================================================
   # [4] Prepare Data for Visualization
   # ===========================================================================
-  # Transform data from wide to long format for plotting
-  plot_data <- alignment_df |>
-    # Select and reshape columns for plotting
-    dplyr::select(alignment, researcher, partner, overall) |>
-    tidyr::pivot_longer(
-      cols = c(researcher, partner, overall),
-      names_to = "group",
-      values_to = "value"
-    ) |>
-    # Convert group names to more readable labels
-    dplyr::mutate(
-      group = dplyr::case_when(
-        group == "researcher" ~ "Researchers",
-        group == "partner" ~ "Partners",
-        .default = "Overall"
-      ),
-      # Convert to ordered factor to control plot order
-      group = factor(
-        group,
-        levels = c("Researchers", "Partners", "Overall"),
-        ordered = TRUE
+  # Check if data is in long format (has alignment_medians column)
+  if ("alignment_medians" %in% names(alignment_df)) {
+    # Data is in long format, create a copy to modify
+    plot_data <- alignment_df
+    
+    # Rename columns if they exist and are different
+    if (!"value" %in% names(plot_data) && "alignment_medians" %in% names(plot_data)) {
+      plot_data$value <- plot_data$alignment_medians
+    }
+    
+    if (!"group" %in% names(plot_data) && "role" %in% names(plot_data)) {
+      plot_data$group <- plot_data$role
+    }
+    
+    # Ensure we have the required columns
+    required_cols <- c("alignment", "value", "group")
+    if (!all(required_cols %in% names(plot_data))) {
+      stop("Input data must contain either 'alignment_medians' and 'role' or 'researcher', 'partner', and 'overall' columns")
+    }
+    
+    # Process group names and convert to factor
+    plot_data <- plot_data |>
+      dplyr::mutate(
+        group = dplyr::case_when(
+          tolower(group) == "researcher" ~ "Researchers",
+          tolower(group) == "partner" ~ "Partners",
+          tolower(group) == "overall" ~ "Overall",
+          tolower(group) == "researchers" ~ "Researchers",
+          tolower(group) == "partners" ~ "Partners",
+          TRUE ~ as.character(group)
+        ),
+        group = factor(
+          group,
+          levels = c("Researchers", "Partners", "Overall"),
+          ordered = TRUE
+        )
       )
-    ) |>
-    # Remove any rows with missing values
-    stats::na.omit()
+  } else {
+    # Data is in wide format, convert to long format
+    plot_data <- alignment_df |>
+      # Select and reshape columns for plotting
+      dplyr::select(alignment, dplyr::any_of(c("researcher", "partner", "overall"))) |>
+      tidyr::pivot_longer(
+        cols = -alignment,
+        names_to = "group",
+        values_to = "value"
+      ) |>
+      # Convert group names to more readable labels
+      dplyr::mutate(
+        group = dplyr::case_when(
+          tolower(group) == "researcher" ~ "Researchers",
+          tolower(group) == "partner" ~ "Partners",
+          tolower(group) == "overall" ~ "Overall",
+          TRUE ~ as.character(group)
+        ),
+        # Convert to ordered factor to control plot order
+        group = factor(
+          group,
+          levels = c("Researchers", "Partners", "Overall"),
+          ordered = TRUE
+        )
+      )
+  }
+  
+  # Remove any rows with missing values
+  plot_data <- stats::na.omit(plot_data)
 
   plot_data <- assign_colors(plot_data, "alignment", color_df)
 

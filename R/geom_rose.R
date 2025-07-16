@@ -14,6 +14,8 @@
 #' @importFrom ggplot2 ggproto draw_key_rect draw_key_point
 #' @importFrom grid gpar segmentsGrob pointsGrob gList unit gTree gList
 #' @importFrom scales alpha
+#' @importFrom dplyr group_by mutate ungroup
+#' @importFrom magrittr %>%
 #' @export
 geom_rose <- function(mapping = NULL, data = NULL,
                       stat = "identity", position = "stack",
