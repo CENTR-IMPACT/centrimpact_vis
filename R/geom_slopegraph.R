@@ -48,14 +48,17 @@ GeomSlopegraph <- ggproto("GeomSlopegraph", ggplot2::Geom,
     # Create point grobs
     point_grobs <- lapply(groups, function(group_data) {
       coords <- coord$transform(group_data, panel_params)
-
+      
+      # If fill is not specified (is NA), use the line color instead
+      point_fill <- ifelse(is.na(coords$fill), coords$colour, coords$fill)
+      
       grid::pointsGrob(
         x = coords$x,
         y = coords$y,
         pch = 21,
         gp = grid::gpar(
           col = scales::alpha(coords$colour, coords$alpha),
-          fill = scales::alpha(coords$fill %||% coords$colour, coords$alpha),
+          fill = scales::alpha(point_fill, coords$alpha), # Use the corrected fill
           fontsize = coords$size * .pt,
           lwd = (coords$linewidth %||% 0.5) * .pt / 2
         )

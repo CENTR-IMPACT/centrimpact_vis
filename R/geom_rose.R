@@ -80,8 +80,8 @@ GeomRose <- ggproto("GeomRose", GeomBar,
 
     # Group data by fill (domain) to ensure consistent heights within domains
     data <- data %>%
-      group_by(fill) %>%
-      mutate(y = max(y)) %>%
+      dplyr::group_by(fill) %>%
+      dplyr::mutate(y = max(y)) %>%
       dplyr::ungroup()
 
     # Calculate bar positions and widths
