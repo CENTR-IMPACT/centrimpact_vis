@@ -23,6 +23,7 @@ geom_rose <- function(mapping = NULL, data = NULL,
                       width = 1,
                       linewidth = 0.25,
                       color = NA,
+                      border.alpha = 0.7, # New parameter for border opacity
                       expand = FALSE,
                       inner.radius = 0,
                       na.rm = FALSE,
@@ -36,6 +37,7 @@ geom_rose <- function(mapping = NULL, data = NULL,
     width = width,
     linewidth = linewidth,
     color = color,
+    border.alpha = border.alpha, # Pass border.alpha
     expand = expand,
     inner.radius = inner.radius,
     na.rm = na.rm,
@@ -68,7 +70,7 @@ GeomRose <- ggproto("GeomRose", GeomBar,
     fill = NA
   ),
   draw_panel = function(self, data, panel_params, coord, width = 1,
-                        linewidth = 0.25, color = NA, expand = FALSE,
+                        linewidth = 0.25, color = NA, border.alpha = 0.7, expand = FALSE,
                         inner.radius = 0) {
     # Ensure data is in the same order as the factor levels
     if (is.factor(data$x)) {
@@ -100,13 +102,21 @@ GeomRose <- ggproto("GeomRose", GeomBar,
       # Scale y to fit within the plot area (0-1 scale)
       y_scaled <- inner.radius + (data$y[i] * (max_radius - inner.radius))
 
-      # Create points for the bar polygon
+      # Create points for the bar polygon with organic curve
       t <- seq(start_angle, end_angle, length.out = 20)
-      x <- c(inner.radius * cos(t), rev(y_scaled * cos(t)))
-      y <- c(inner.radius * sin(t), rev(y_scaled * sin(t)))
+      # Add subtle curve variation for organic petals
+      curve_factor <- 0.05 * sin((t - start_angle) / (end_angle - start_angle) * pi)
+      outer_x <- (y_scaled + curve_factor) * cos(t)
+      outer_y <- (y_scaled + curve_factor) * sin(t)
+      x <- c(inner.radius * cos(t), rev(outer_x))
+      y <- c(inner.radius * sin(t), rev(outer_y))
 
-      # Use fill color for the border to remove white edges
-      border_color <- if (!is.na(color) && color != "white") color else data$fill[i]
+      # Use fill color for the border to remove white edges, but with border.alpha
+      border_color <- if (!is.na(color) && color != "white") {
+        scales::alpha(color, border.alpha)  # Softer border
+      } else {
+        scales::alpha(data$fill[i], 0.8)  # Slightly transparent fill color
+      }
 
       # Create polygon grob for the bar
       grid::polygonGrob(
@@ -128,6 +138,13 @@ GeomRose <- ggproto("GeomRose", GeomBar,
   },
   draw_key = draw_key_rect
 )
+
+# Helper function to darken a color (simple version)
+darken <- function(color, factor = 0.2) {
+  rgb_col <- grDevices::col2rgb(color) / 255
+  rgb_col <- pmax(0, rgb_col - factor)
+  grDevices::rgb(rgb_col[1,], rgb_col[2,], rgb_col[3,])
+}
 
 #' Stamen Layer for Rose Plots
 #'
@@ -178,13 +195,14 @@ geom_stamen <- function(mapping = NULL, data = NULL,
 # @usage NULL
 # @noRd
 GeomStamen <- ggproto("GeomStamen", Geom,
-  required_aes = c("x", "y", "xend", "yend", "colour"),
+  required_aes = c("x", "y", "xend", "yend", "colour", "size"), # Add size
   default_aes = aes(
     colour = "black",
     linewidth = 0.5,
     linetype = 1,
     alpha = NA,
-    fill = NA
+    fill = NA,
+    size = 1 # Default size
   ),
   draw_panel = function(self, data, panel_params, coord, linewidth = 1, point.size = 3, inner.radius = 0) {
     # Ensure data is in the same order as the factor levels
@@ -213,36 +231,43 @@ GeomStamen <- ggproto("GeomStamen", Geom,
     x1 <- 0.5 + coords$yend_scaled * cos(angles)
     y1 <- 0.5 + coords$yend_scaled * sin(angles)
 
-    # Create segments grob (from inner radius to point)
-    segments <- segmentsGrob(
-      x0 = x0,
-      y0 = y0,
-      x1 = x1,
-      y1 = y1,
-      default.units = "npc",
-      gp = gpar(
-        col = alpha(coords$colour, coords$alpha %||% 1),
-        lwd = (coords$linewidth %||% 0.5) * .pt * linewidth,
-        lty = coords$linetype,
-        lineend = "round"
+    # Create bezier curves for stamen lines (curved from center to tip)
+    # Control point is 2/3 of the way out, offset slightly for curve
+    ctrl_x <- 0.5 + (inner.radius + 2/3 * (coords$yend_scaled - inner.radius)) * cos(angles + 0.08)
+    ctrl_y <- 0.5 + (inner.radius + 2/3 * (coords$yend_scaled - inner.radius)) * sin(angles + 0.08)
+
+    bezier_list <- lapply(seq_len(n), function(i) {
+      grid::bezierGrob(
+        x = c(x0[i], ctrl_x[i], x1[i]),
+        y = c(y0[i], ctrl_y[i], y1[i]),
+        default.units = "npc",
+        gp = grid::gpar(
+          col = scales::alpha(darken(coords$colour[i], 0.2), coords$alpha[i] %||% 1),
+          lwd = (coords$linewidth[i] %||% 0.5) * .pt * linewidth,
+          lty = coords$linetype[i],
+          lineend = "round"
+        )
       )
-    )
+    })
+
+    # Use size aesthetic for point size
+    size_scaled <- (coords$size %||% 1) * point.size
 
     # Create points grob at the end positions
-    points <- pointsGrob(
+    points <- grid::pointsGrob(
       x = x1,
       y = y1,
       pch = 16,
-      size = unit(point.size, "mm"),
+      size = grid::unit(size_scaled, "mm"),
       default.units = "npc",
-      gp = gpar(
-        col = alpha(coords$colour, coords$alpha %||% 1),
-        fill = alpha(coords$colour, coords$alpha %||% 1)
+      gp = grid::gpar(
+        col = scales::alpha(darken(coords$colour, 0.2), coords$alpha %||% 1),
+        fill = scales::alpha(darken(coords$colour, 0.2), coords$alpha %||% 1)
       )
     )
 
     # Return combined grobs
-    gList(segments, points)
+    grid::gList(grid::gList(bezier_list), points)
   },
   draw_key = draw_key_point
 )
