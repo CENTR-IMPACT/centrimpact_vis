@@ -195,7 +195,7 @@ geom_stamen <- function(mapping = NULL, data = NULL,
 # @usage NULL
 # @noRd
 GeomStamen <- ggproto("GeomStamen", Geom,
-  required_aes = c("x", "y", "xend", "yend", "colour", "size"), # Add size
+  required_aes = c("x", "y", "xend", "yend", "colour"), # Make size optional
   default_aes = aes(
     colour = "black",
     linewidth = 0.5,
@@ -250,8 +250,9 @@ GeomStamen <- ggproto("GeomStamen", Geom,
       )
     })
 
-    # Use size aesthetic for point size
-    size_scaled <- (coords$size %||% 1) * point.size
+    # Use size aesthetic for point size, default to 1 if missing
+    size_vec <- if ("size" %in% names(coords)) coords$size else rep(1, n)
+    size_scaled <- size_vec * point.size
 
     # Create points grob at the end positions
     points <- grid::pointsGrob(
